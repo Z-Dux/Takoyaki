@@ -32,6 +32,9 @@
     "oxapay": "^0.7.2",
     "pagination.djs": "^4.0.18",
     "playwright": "^1.51.1",
+    "playwright-extra": "^4.3.6",
+    "playwright-extra-plugin-stealth": "^0.0.1",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "winston": "^3.17.0"
   }
 }

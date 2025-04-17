@@ -1,3 +1,4 @@
+const BASE = `https://hianimez.to`//undefined//`https://consumet-rose-one.vercel.app/anime/zoro`;
 import { ANIME, IAnimeEpisode } from "@consumet/extensions"
 import config from "../../config";
 import {
@@ -29,7 +30,7 @@ export default {
         const query = interaction.options.getString("query");
         if (!query) return await interaction.editReply("No query provided");
 
-        const zoro = new ANIME.Zoro();//(`https://consumet-rose-one.vercel.app/anime/zoro`);
+        const zoro = new ANIME.Zoro(BASE);
         const search = await zoro.search(query);
         const result = search.results.find(x => x.id.startsWith(query)) || search.results[0];
         if (!result) return await interaction.editReply("No results found!");
@@ -63,7 +64,7 @@ export default {
         if (description) embed.setDescription(description.toString().substring(0, 250) + `...`);
 
         embed.addFields([{ name: `Details`, value: str.map(x => `- **${x.substring(0, x.indexOf(`:`) + 1)}**${x.substring(x.indexOf(`:`) + 1)}`).join("\n") }]);
-        let components:any[] = [];
+        let components: any[] = [];
         if (anime.episodes?.length || 0 > 0) {
             const actionRows = await formRow(anime.episodes || [], id);
             components = (actionRows)
@@ -78,7 +79,7 @@ export default {
 
         if (!interaction.isAutocomplete()) return;
 
-        const zoro = new ANIME.Zoro();//(`http://consumet-rose-one.vercel.app/`)
+        const zoro = new ANIME.Zoro(BASE);//(`http://consumet-rose-one.vercel.app/`)
 
         const query = interaction.options.getString("query");
         if (!query) return;
@@ -109,7 +110,7 @@ async function formRow(episodes: IAnimeEpisode[], id: string) {
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId(`watch-${id}`)
             .setPlaceholder(`Anime Episodes (${25 * pg + chunk.length}/${episodes.length})`)
-            .addOptions(chunk.map((x, i) => new StringSelectMenuOptionBuilder().setLabel(`${x.number}. ${x.isFiller?`⭐ `:``}${x.title}`).setValue(x.id)));
+            .addOptions(chunk.map((x, i) => new StringSelectMenuOptionBuilder().setLabel(`${x.number}. ${x.isFiller ? `⭐ ` : ``}${x.title}`).setValue(x.id)));
         row.addComponents(selectMenu);
         pg++;
         rows.push(row);

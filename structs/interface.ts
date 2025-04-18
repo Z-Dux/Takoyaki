@@ -27,5 +27,3 @@ export interface Command {
     }
   >;
 }
-
-export type Team = "CSK" | "DC" | "KKR" | "MI" | "PK" | "RCB" | "RR" | "SRH" | "LSG" | "GT";

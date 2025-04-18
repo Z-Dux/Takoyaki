@@ -1,5 +1,4 @@
 import * as colors from "colors";
-import { Team } from "../structs/interface";
 colors.enable();
 
 export function log(message: string) {
@@ -85,21 +84,6 @@ export function getRandomInRange([min, max]: [number, number]): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-
-export function assignTeam(team: string): Team {
-  team = team.toLowerCase();
-  if(team.includes(`hyderabad`)) return `SRH`
-  else if(team.includes(`bengaluru`)) return `RCB`
-  else if(team.includes(`mumbai`)) return `MI`
-  else if(team.includes(`kolkata`)) return `KKR`
-  else if(team.includes(`punjab`)) return `PK`
-  else if(team.includes(`delhi`)) return `DC`
-  else if(team.includes(`chennai`)) return `CSK`
-  else if(team.includes(`rajasthan`)) return `RR`
-  else if(team.includes(`gujarat`)) return `GT`
-  else if(team.includes(`lucknow`)) return `LSG`
-  else return `CSK`
-}
 
 export const tableBorder = {
   top: "",

@@ -2,6 +2,7 @@ import { Events, Interaction, ChatInputCommandInteraction, EmbedBuilder, ActionR
 import { Client } from "../structs/client";
 import { ANIME, StreamingServers } from "@consumet/extensions";
 import { chunkize } from "../helper/utils";
+import config from "../config";
 
 export default {
     name: Events.InteractionCreate,
@@ -9,7 +10,7 @@ export default {
         if (interaction.isAnySelectMenu()) {
             const animeId = interaction.customId
             const epId = interaction.values[0];
-            const zoro = new ANIME.Zoro();
+            const zoro = new ANIME.Zoro(config.animeApi);
             await interaction.deferReply();
             const anime = await zoro.fetchAnimeInfo(animeId);
             if (!anime.episodes || anime.episodes.length === 0 || !epId) return await interaction.editReply({
@@ -26,7 +27,7 @@ export default {
                 .setColor(0x0099ff)
             if (episode.url) embed.setURL(episode.url)
             if (anime.image) embed.setThumbnail(anime.image);
-            const components = controlBtns([`play`, `add-to-queue`], episode.id, episode.url) as any
+            const components = controlBtns([`play`, `add_to_queue`], episode.id, episode.url) as any
             await interaction.editReply({
                 embeds: [embed],
                 components
@@ -35,7 +36,7 @@ export default {
     },
 };
 
-type ControlBtns = "play" | "pause" | "stop" | "add-to-queue" | "remove-from-queue" | "previous" | "next";
+type ControlBtns = "play" | "pause" | "stop" | "add_to_queue" | "remove_from_queue" | "previous" | "next";
 
 const Buttons: { id: ControlBtns, button: ButtonBuilder }[] = [
     {
@@ -60,16 +61,16 @@ const Buttons: { id: ControlBtns, button: ButtonBuilder }[] = [
             .setEmoji("⏹️")
     },
     {
-        id: "add-to-queue",
+        id: "add_to_queue",
         button: new ButtonBuilder()
-            .setCustomId("add-to-queue")
+            .setCustomId("add_to_queue")
             .setStyle(ButtonStyle.Secondary)
             .setEmoji("➕")
     },
     {
-        id: "remove-from-queue",
+        id: "remove_from_queue",
         button: new ButtonBuilder()
-            .setCustomId("remove-from-queue")
+            .setCustomId("remove_from_queue")
             .setStyle(ButtonStyle.Secondary)
             .setEmoji("➖")
     },
@@ -94,12 +95,12 @@ function controlBtns(btns: ControlBtns[], id: string, url?: string) { // Play, A
     const buttons = btns.map((btn) => {
         const button = Buttons.find((b) => b.id === btn);
         if (!button) return;
-        button.button.setCustomId(`${btn}-${id}`);
+        button.button.setCustomId(`ct-${btn}-${id}`);
         return button.button;
     }).filter((b) => b !== undefined);
 
     if (url) {
-        buttons.splice(4, 0, urlBtn(url)); // Add the URL button to the 5th position
+        buttons.splice(4, 0, urlBtn(url));
     }
 
     const chunks = chunkize(buttons, { size: 5 });

@@ -14,7 +14,7 @@ import { chromium } from 'playwright-extra';
     const a = await zoro.fetchEpisodeSources(`${anime.episodes[0]?.id}`, StreamingServers.VidStreaming);
     console.log(a)
     return;*/
-    const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    //const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
     const browser = await chromium.launch({
         headless: false,
@@ -22,15 +22,16 @@ import { chromium } from 'playwright-extra';
             '--disable-blink-features=AutomationControlled',
             `--start-maximized`
         ],
-        executablePath: chromePath
+        //executablePath: chromePath
     });
+    console.log(`Launched shit`);
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         viewport: null
     });
     const page = await context.newPage();
     await page.addInitScript({
-        content: `// Pretend we are a real browser
+        content: `
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
@@ -47,7 +48,8 @@ import { chromium } from 'playwright-extra';
     }),
   });`
     })
+    console.log(`going hell`)
     await page.goto(`https://aniwatchtv.to/watch/my-hero-academia-vigilantes-19544?_debug=ok`)
-    await page.waitForTimeout(5000); // Wait for the page to load
+    await page.waitForTimeout(5000);
 
 })();

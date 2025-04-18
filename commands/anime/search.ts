@@ -1,6 +1,7 @@
-const BASE = `https://hianimez.to`//undefined//`https://consumet-rose-one.vercel.app/anime/zoro`;
+//const BASE = `https://hianimez.to`//undefined//`https://consumet-rose-one.vercel.app/anime/zoro`;
 import { ANIME, IAnimeEpisode } from "@consumet/extensions"
 import config from "../../config";
+const BASE = config.animeApi
 import {
     ActionRowBuilder,
     CommandInteraction,
@@ -68,7 +69,6 @@ export default {
         if (anime.episodes?.length || 0 > 0) {
             const actionRows = await formRow(anime.episodes || [], id);
             components = (actionRows)
-
         }
         await interaction.editReply({
             embeds: [embed],

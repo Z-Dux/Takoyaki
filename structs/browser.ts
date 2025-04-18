@@ -1,6 +1,6 @@
 import { chromium } from "playwright-extra";
 import { Browser, BrowserContext, Page } from "playwright";
-
+import os from "node:os";
 import { setTimeout as wait } from "timers/promises";
 import { log } from "../helper/utils";
 import path from "path";
@@ -8,45 +8,46 @@ import stealth from "puppeteer-extra-plugin-stealth";
 import config from "../config";
 chromium.use(stealth());
 
-class Container {
+export class Container {
   //@ts-ignore
   browser: BrowserContext;
   //@ts-ignore
   page: Page;
   //@ts-ignore
-  constructor() { }
+  discord?: DiscordManager;
+  constructor() {}
   async launch() {
-    const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-    const extensionPath = path.resolve(__dirname, '../extensions/ublock/uBlock0.chromium');
+    const chromePath =
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    const extensionPath = path.resolve(
+      __dirname,
+      "../extensions/ublock/uBlock0.chromium"
+    );
     this.browser = await chromium.launchPersistentContext(``, {
       headless: false,
       args: [
-        '--disable-blink-features=AutomationControlled',
+        "--disable-blink-features=AutomationControlled",
         `--start-maximized`,
         `--no-sandbox`,
-        '--disable-infobars',
+        "--disable-infobars",
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
-        '--enable-usermedia-screen-capturing',
-        '--allow-http-screen-capture', // allows from insecure origins if needed
-        '--auto-select-desktop-capture-source=AniCordStream',
+        "--enable-usermedia-screen-capturing",
+        "--allow-http-screen-capture", // allows from insecure origins if needed
+        "--auto-select-desktop-capture-source=AniCordStream",
       ],
-      executablePath: chromePath,
-      viewport: null
+      executablePath:
+        os.platform() == `linux` ? `/usr/bin/google-chrome` : chromePath,
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
     });
     log(`Launched browser!`.yellow);
   }
   async getPage() {
     const episodeTab = await this.browser.newPage();
-this.page = episodeTab
-// Get the underlying CDP session
-const cdpSession = await this.browser.newCDPSession(episodeTab);
-
-// Detach tab into new window
-await cdpSession.send('Browser.setWindowBounds', {
-  windowId: (await cdpSession.send('Browser.getWindowForTarget')).windowId,
-  bounds: { windowState: 'normal' }
-});
+    this.page = episodeTab;
 
     await this.page.addInitScript({
       content: `Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -63,51 +64,81 @@ await cdpSession.send('Browser.setWindowBounds', {
       return target[prop];
     },
   }),
-});`
-    })
+});`,
+    });
     log(`Launched new page...`.yellow);
   }
   async playEpisode(url: string) {
     await this.page.goto(url + "&_debug=ok", {
-      timeout: 1_00_000
+      timeout: 1_00_000,
     });
-
     await this.page.evaluate(() => {
       document.title = "AniCordStream";
     });
 
     log(`Navigated to ${url}`.green);
     await wait(5000);
+    await this.focusPlayer();
   }
   async focusPlayer() {
-    const iframeHandle = await this.page.$('#iframe-embed');
+    const iframeHandle = await this.page.$("#iframe-embed");
     const frame = await iframeHandle?.contentFrame();
 
     if (frame) {
       await this.page.waitForSelector(`#iframe-embed`);
       log(`Detected video...`.magenta);
-      await frame.evaluate(
-        `const video = document.querySelector('video');
-        if (video) {
-          const requestFullscreen =
-            video.requestFullscreen ||
-            video.webkitRequestFullscreen ||
-            video.mozRequestFullScreen ||
-            video.msRequestFullscreen;
-
-          if (requestFullscreen) {
-            requestFullscreen.call(video);
-          } else {
-            console.warn('Fullscreen API not supported on video.');
+      await this.page.waitForSelector(`.player-frame`);
+      log(`Focusing video frame...`.yellow);
+      await this.page.evaluate(() => {
+        const header = document.querySelector("#header");
+        if (header) header.remove();
+      });
+      await this.page.evaluate(() => {
+        const ticks = document.querySelectorAll(".tick.tick-rate");
+        ticks.forEach((el) => {
+          if (el.textContent?.trim() === "18+") {
+            el.remove();
           }
+        });
+      });
+
+      await this.page.evaluate(() => {
+        const playerFrame = document.querySelector(".player-frame");
+        if (playerFrame) {
+          //@ts-ignore lazy to edit types
+          playerFrame.style.position = "fixed";
+          //@ts-ignore
+          playerFrame.style.top = "0";
+          //@ts-ignore
+          playerFrame.style.left = "0";
+          //@ts-ignore
+          playerFrame.style.width = "100vw";
+          //@ts-ignore
+          playerFrame.style.height = "100vh";
+          //@ts-ignore
+          playerFrame.style.zIndex = "9999";
+          //@ts-ignore
+          playerFrame.style.margin = "0";
+          //@ts-ignore
+          playerFrame.style.padding = "0";
+          //@ts-ignore
+          playerFrame.style.backgroundColor = "black";
         } else {
-          console.warn('No <video> element found in iframe.');
-        }`
-      );
+          console.warn("Could not find .player-frame element");
+        }
+        document.documentElement.style.scrollbarWidth = "none";
+        document.body.style.overflow = "scroll";
+        document.body.style.scrollbarWidth = "none";
+        document.body.style.overflow = "hidden";
+        const style = document.createElement("style");
+        style.innerHTML = `::-webkit-scrollbar { display: none; }`;
+        document.head.appendChild(style);
+      });
     }
   }
   async loadExtension() {
-    const [chromeExtenstionsTab] = this.browser.pages() || await this.browser.newPage();
+    const [chromeExtenstionsTab] =
+      this.browser.pages() || (await this.browser.newPage());
     await chromeExtenstionsTab?.goto("chrome://extensions");
     await wait(500);
     const devModeToggle = await chromeExtenstionsTab?.evaluateHandle(
@@ -120,34 +151,37 @@ await cdpSession.send('Browser.setWindowBounds', {
   }
 }
 
-class DiscordManager {
+export class DiscordManager {
   discord: Page | undefined;
   browser: BrowserContext | undefined;
-  constructor(browser: BrowserContext) {
-    this.browser = browser;
-
+  inVC = false;
+  isSharing = false;
+  constructor(browser: Container) {
+    this.browser = browser.browser;
+    browser.discord = this;
   }
   async prepare() {
-    const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-    
+    const chromePath =
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+
     this.browser = await chromium.launchPersistentContext(``, {
       headless: false,
       args: [
-        '--disable-blink-features=AutomationControlled',
+        "--disable-blink-features=AutomationControlled",
         `--start-maximized`,
         `--no-sandbox`,
-        '--disable-infobars',
-        '--use-fake-ui-for-media-stream', // auto-accepts camera/mic/screenshare prompt
-        '--enable-usermedia-screen-capturing',
-        '--allow-http-screen-capture', // allows from insecure origins if needed
-        '--auto-select-desktop-capture-source=AniCordStream',
+        "--disable-infobars",
+        "--use-fake-ui-for-media-stream", // auto-accepts camera/mic/screenshare prompt
+        "--enable-usermedia-screen-capturing",
+        "--allow-http-screen-capture", // testing
+        "--auto-select-desktop-capture-source=AniCordStream",
       ],
       executablePath: chromePath,
-      viewport: null
-    })
+      viewport: null,
+    });
   }
   async login() {
-    if(!this.browser) return log(`Discord not loaded!`.red)
+    if (!this.browser) return log(`Discord not loaded!`.red);
     this.discord = await this.browser.newPage();
     const token = config.self;
 
@@ -160,58 +194,43 @@ class DiscordManager {
     log(`Logging in...`.grey);
 
     await this.discord.evaluate((token) => {
-      const iframe = document.createElement('iframe');
+      const iframe = document.createElement("iframe");
       document.body.appendChild(iframe);
-      if(iframe.contentWindow)
-      iframe?.contentWindow.localStorage.setItem('token', `"${token}"`);
-    
+      if (iframe.contentWindow)
+        iframe?.contentWindow.localStorage.setItem("token", `"${token}"`);
+
       setTimeout(() => location.reload(), 1000);
     }, token);
 
-    await log(`Waiting for discord to load...`.magenta)
-    await this.discord.waitForSelector(`#app-mount > div.appAsidePanelWrapper_a3002d > div.notAppAsidePanel_a3002d > div.app_a3002d > div > div.layers__960e4.layers__160d8 > div > div > div > div.content_c48ade > div.sidebar_c48ade > div.sidebarList_c48ade.sidebarListRounded_c48ade > nav`)
-    log(`Logged in!`.green)
+    await log(`Waiting for discord to load...`.magenta);
+    await this.discord.waitForSelector(
+      `#app-mount > div.appAsidePanelWrapper_a3002d > div.notAppAsidePanel_a3002d > div.app_a3002d > div > div.layers__960e4.layers__160d8 > div > div > div > div.content_c48ade > div.sidebar_c48ade > div.sidebarList_c48ade.sidebarListRounded_c48ade > nav`
+    );
+    log(`Logged in!`.green);
   }
   async joinVoice() {
+    if (this.inVC) return log(`Already in VC!`.red);
+    this.inVC = true;
     log(`Joining voice...`.grey);
-    if(!this.discord) return log(`Discord not loaded!`.red)
+    if (!this.discord) return log(`Discord not loaded!`.red);
     const joinBtn = this.discord.getByText("Join Voice");
     await joinBtn.waitFor({ state: "visible", timeout: 150_000 });
-  
-    await joinBtn.click().catch(err => log("Join button click failed!".red));
+
+    await joinBtn.click().catch((err) => log("Join button click failed!".red));
     await wait(5000);
-  
+
     log(`Joined voice...`.green);
   }
-  
-  async startScreenShare() {
-    log(`Starting screenshare...`);
-    if(!this.discord) return log(`Discord not loaded!`.red)
-    const buttonLocator = this.discord.locator('[aria-label="Share Your Screen"]').first();
-await buttonLocator.waitFor({ state: 'visible' });
-await buttonLocator.click();
 
-  
+  async startScreenShare() {
+    if (this.isSharing) return log(`Already sharing!`.red);
+    this.isSharing = true;
+    log(`Starting screenshare...`);
+    if (!this.discord) return log(`Discord not loaded!`.red);
+    const buttonLocator = this.discord
+      .locator('[aria-label="Share Your Screen"]')
+      .first();
+    await buttonLocator.waitFor({ state: "visible" });
+    await buttonLocator.click();
   }
 }
-
-const container = new Container();
-container.launch().then(async () => {
-  //return;
-  const extTab = await container.loadExtension();
-  await container.getPage();
-  await extTab?.close();
-  await container.playEpisode(
-    `https://hianime.to/watch/jujutsu-kaisen-2nd-season-18413?ep=103634`
-  );
-  await container.focusPlayer();
-  const discorder = new DiscordManager(container.browser);
-  //await discorder.prepare();
-  await discorder.login();
-  await discorder.joinVoice();
-  await discorder.startScreenShare();
-  log(`Finished!`.green);
-});
-
-
-

@@ -31,16 +31,20 @@ export class Container {
         `--no-sandbox`,
         "--disable-infobars",
         `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
+        //`--load-extension=${extensionPath}`,
         "--enable-usermedia-screen-capturing",
+        "--disable-gpu",
+        "--disable-background-timer-throttling",
+        "--disable-renderer-backgrounding",
+        "--disable-backgrounding-occluded-windows",
         "--allow-http-screen-capture", // allows from insecure origins if needed
         "--auto-select-desktop-capture-source=AniCordStream",
       ],
       executablePath:
         os.platform() == `linux` ? `/usr/bin/google-chrome` : chromePath,
       viewport: {
-        width: 1920,
-        height: 1080,
+        width: 1280,
+        height: 720,
       },
     });
     log(`Launched browser!`.yellow);
@@ -48,6 +52,23 @@ export class Container {
   async getPage() {
     const episodeTab = await this.browser.newPage();
     this.page = episodeTab;
+    await this.page.route("**/*", (route) => {
+      const url = route.request().url();
+      if (
+        url.includes("ads") ||
+        url.includes("tracker") ||
+        url.includes(`font`) ||
+        url.includes(`thumb`) ||
+        url.includes(`.ico`) ||
+        url.includes(`.webp`) ||
+        url.includes(`.css`)
+      ) {
+        route.abort();
+      } else {
+        console.log(url);
+        route.continue();
+      }
+    });
 
     await this.page.addInitScript({
       content: `Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -89,6 +110,7 @@ export class Container {
       log(`Detected video...`.magenta);
       await this.page.waitForSelector(`.player-frame`);
       log(`Focusing video frame...`.yellow);
+      await this.page.screenshot({ path: `prefocus.png` });
       await this.page.evaluate(() => {
         const header = document.querySelector("#header");
         if (header) header.remove();
@@ -214,7 +236,9 @@ export class DiscordManager {
     log(`Joining voice...`.grey);
     if (!this.discord) return log(`Discord not loaded!`.red);
     const joinBtn = this.discord.getByText("Join Voice");
-    await joinBtn.waitFor({ state: "visible", timeout: 150_000 });
+    await joinBtn
+      .waitFor({ state: "visible", timeout: 150_00 })
+      .catch((err) => {});
 
     await joinBtn.click().catch((err) => log("Join button click failed!".red));
     await wait(5000);

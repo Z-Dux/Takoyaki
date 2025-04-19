@@ -61,11 +61,10 @@ export class Container {
         url.includes(`thumb`) ||
         url.includes(`.ico`) ||
         url.includes(`.webp`) ||
-        url.includes(`.css`)
+        (url.includes(`.css`) && url.includes(`hianime`))
       ) {
         route.abort();
       } else {
-        console.log(url);
         route.continue();
       }
     });
@@ -124,47 +123,47 @@ export class Container {
         });
       });
       await this.page.evaluate(() => {
-        const playerFrame = document.querySelector(".player-frame");
+        const iframe = document.getElementById("iframe-embed");
       
-        if (playerFrame) {
-          //@ts-ignore
-          Object.assign(playerFrame.style, {
-            position: "fixed",
-            top: "0",
-            left: "0",
-            width: "100vw",
-            height: "100vh",
-            zIndex: "9999",
-            margin: "0",
-            padding: "0",
-            backgroundColor: "black",
-            overflow: "hidden", // Ensure content doesn't spill out
-            display: "flex",     // Allow flexible children
-            justifyContent: "center",
-            alignItems: "center"
-          });
-      
-          // Resize ALL children inside playerFrame
-          const children = playerFrame.querySelectorAll("*");
-          children.forEach((child) => {
-            const el = child as HTMLElement;
-            el.style.width = "100%";
-            el.style.height = "100%";
-            el.style.objectFit = "cover"; // especially for videos/images/iframes
-          });
-        } else {
-          console.warn("Could not find .player-frame element");
+        if (!iframe) {
+          console.warn("iframe-embed not found");
+          return;
         }
       
-        // Hide scrollbars
+        const wrapper = document.createElement("div");
+        Object.assign(wrapper.style, {
+          position: "fixed",
+          top: "0",
+          left: "0",
+          width: "100vw",
+          height: "100vh",
+          overflow: "hidden",
+          backgroundColor: "black",
+          zIndex: "9999"
+        });
+      
+        Object.assign(iframe.style, {
+          position: "absolute",
+          top: "0",
+          left: "0",
+          width: "110vw",
+          height: "110vh",
+          transform: "translate(-5vw, -5vh)",
+          border: "none",
+          margin: "0",
+          padding: "0"
+        });
+      
+        iframe.parentNode?.insertBefore(wrapper, iframe);
+        wrapper.appendChild(iframe);
+      
         document.documentElement.style.scrollbarWidth = "none";
         document.body.style.overflow = "hidden";
-        document.body.style.scrollbarWidth = "none";
+      
         const style = document.createElement("style");
         style.innerHTML = `::-webkit-scrollbar { display: none; }`;
         document.head.appendChild(style);
       });
-      
       /*await this.page.evaluate(() => {
         const playerFrame = document.querySelector(".player-frame");
         if (playerFrame) {

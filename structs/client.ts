@@ -2,6 +2,7 @@ import { Client as DiscordClient, Collection, GatewayIntentBits, ClientUser } fr
 import { Command } from "./interface";
 import { Container, DiscordManager } from "./browser";
 import { log } from "../helper/utils";
+import { PlayerManager } from "./player";
 
 
 const container = new Container();
@@ -25,6 +26,7 @@ DiscordManager
 export class Client extends DiscordClient {
   public commands: Collection<string, Command>;
   public container: Container = container;
+  public player: PlayerManager;
   constructor() {
     super({
       intents: [
@@ -36,6 +38,6 @@ export class Client extends DiscordClient {
     });
 
     this.commands = new Collection<string, Command>();
-    
+    this.player = new PlayerManager(this);
   }
 }

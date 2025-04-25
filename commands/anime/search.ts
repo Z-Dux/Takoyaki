@@ -89,8 +89,9 @@ export default {
     ]);
     let components: any[] = [];
     if (anime.episodes?.length || 0 > 0) {
-      const actionRows = await formRow(anime.episodes || [], id);
-      components = actionRows;
+      
+      const actionRows = await formRow(anime.episodes?.slice(-75) || [], id);
+      components = actionRows
     }
     await interaction.editReply({
       embeds: [embed],
@@ -129,14 +130,14 @@ async function formRow(episodes: IAnimeEpisode[], id: string) {
   for (const chunk of chunked) {
     const row = new ActionRowBuilder();
     const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`watch-${id}`)
+      .setCustomId(`watch-${id}-${pg}`)
       .setPlaceholder(
-        `Anime Episodes (${25 * pg + chunk.length}/${episodes.length})`
+        `Anime Episodes (${chunk.at(0)?.number}/${chunk.at(-1)?.number})`
       )
       .addOptions(
         chunk.map((x, i) =>
           new StringSelectMenuOptionBuilder()
-            .setLabel(`${x.number}. ${x.isFiller ? `⭐ ` : ``}${x.title}`)
+            .setLabel(`${x.number}. ${x.isFiller ? `⭐ ` : ``}${x.title}`.substring(0, 100))
             .setValue(x.id)
         )
       );

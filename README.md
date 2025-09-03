@@ -1,5 +1,8 @@
 # Takoyaki
 
+> Be sure to use chromium version released before August 2025 to bypass manifest v2 issue.
+> Edit chrome path if needed
+
 To install dependencies:
 
 ```bash
